@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART-AID | Disaster Relief Platform</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #0dcaf0;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        body {
+            background: var(--bg-gradient);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .nav-pills .nav-link.active {
+            background-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        }
+        .btn-primary {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR SYSTEM -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-hand-holding-hand me-2 text-info"></i>SMART-AID</a>
+            <span class="navbar-text text-white-50 d-none d-sm-inline">
+                Software Architecture
+            </span>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container my-5">
+        
+        <!-- HEADER TITLE -->
+        <div class="text-center mb-5">
+            <h1 class="fw-bold text-dark mb-2">Disaster Relief Coordination</h1>
+            <p class="text-muted fs-5">Sistem Pengurusan Bantuan Kecemasan Mangsa Bencana Terpadu</p>
+            
+            <!-- NAV TABS FOR SWITCHING SCREENS (3 TABS) -->
+            <ul class="nav nav-pills justify-content-center mt-4" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active me-2" id="pills-user-tab" data-bs-toggle="pill" data-bs-target="#pills-user" type="button" role="tab"><i class="fa-solid fa-user-plus me-2"></i>1. Daftar Pengguna (User)</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link me-2" id="pills-victim-tab" data-bs-toggle="pill" data-bs-target="#pills-victim" type="button" role="tab"><i class="fa-solid fa-bullhorn me-2"></i>2. Borang Mangsa (Request)</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-volunteer-tab" data-bs-toggle="pill" data-bs-target="#pills-volunteer" type="button" role="tab" onclick="muatNaikSenaraiBantuan()"><i class="fa-solid fa-list-check me-2"></i>3. Senarai Bantuan (Volunteer)</button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- TAB CONTENT -->
+        <div class="tab-content" id="pills-tabContent">
+            
+            <!-- TAB 1: USER SERVICE (PORT 3001) -->
+            <div class="tab-pane fade show active" id="pills-user" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card p-4">
+                            <div class="card-body">
+                                <h3 class="card-title fw-bold text-primary mb-4 text-center"><i class="fa-solid fa-id-card shadow-sm p-2 bg-light rounded me-2"></i>Pendaftaran Sistem</h3>
+                                <hr class="mb-4">
+                                <form id="formUser" onsubmit="hantarUserKeBackend(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Nama Penuh</label>
+                                        <input type="text" class="form-control" id="user_name" placeholder="Contoh: Abu bin Ali" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Peranan (Role)</label>
+                                        <select class="form-select" id="user_role" required>
+                                            <option value="victim">Mangsa Banjir (Victim)</option>
+                                            <option value="volunteer">Sukarelawan (Volunteer)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">No. Telefon</label>
+                                        <input type="text" class="form-control" id="user_phone" placeholder="Contoh: 0123456789" required>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-check me-2"></i>Daftar ke User Service</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TAB 2: REQUEST SERVICE (PORT 3002) -->
+            <div class="tab-pane fade" id="pills-victim" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-md-7">
+                        <div class="card p-4">
+                            <div class="card-body">
+                                <h3 class="card-title fw-bold text-primary mb-4 text-center"><i class="fa-solid fa-file-invoice shadow-sm p-2 bg-light rounded me-2"></i>Mohon Bantuan Kecemasan</h3>
+                                <hr class="mb-4">
+                                <form id="formBantuan" onsubmit="hantarBantuanKeBackend(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Keperluan / Item Bantuan</label>
+                                        <input type="text" class="form-control" id="item_bantuan" placeholder="Contoh: Beras, Selimut, Air Mineral" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Kuantiti Diperlukan</label>
+                                        <input type="number" class="form-control" id="kuantiti" min="1" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">Lokasi Terperinci / Pusat Pindahan</label>
+                                        <input type="text" class="form-control" id="lokasi" placeholder="Contoh: SK Kampung Baru" required>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg"><i class="fa-solid fa-paper-plane me-2"></i>Hantar Permohonan</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: VOLUNTEER SERVICE (PORT 3003) -->
+            <div class="tab-pane fade" id="pills-volunteer" role="tabpanel">
+                <div class="card p-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="card-title fw-bold text-dark m-0"><i class="fa-solid fa-handshake-angle text-info me-2"></i>Senarai Permohonan Aktif</h3>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="muatNaikSenaraiBantuan()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+                        </div>
+                        <hr class="mb-4">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle bg-white m-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" class="ps-3">ID Case</th>
+                                        <th scope="col">Item Bantuan</th>
+                                        <th scope="col">Kuantiti</th>
+                                        <th scope="col">Lokasi</th>
+                                        <th scope="col">Status Semasa</th>
+                                        <th scope="col" class="text-center pe-3">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jadualBantuan">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">Sila klik butang Refresh...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white-50 text-center py-3 mt-auto">
+        <p class="m-0 small">SMART-AID Kumpulan 12 &copy; 2026 | Seni Bina Perisian (CSE3433)</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+       // 1. INTEGRASI USER SERVICE (PORT 3001)
+        function hantarUserKeBackend(event) {
+            event.preventDefault();
+            const name = document.getElementById('user_name').value;
+            const role = document.getElementById('user_role').value;
+            const phone = document.getElementById('user_phone').value;
+
+            fetch('http://localhost:3001/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, role, phone })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "Success") {
+                    // JIKA REGISTER SEBAGAI VOLUNTEER, KITA SIMPAN NAMA DIA DALAM MEMORI BROWSER
+                    if (role === "volunteer") {
+                        localStorage.setItem('sukarelawan_aktif', name);
+                    }
+                    
+                    alert(`👤 USER SERVICE SUCCESS!\nPengguna [ ${name} ] berjaya didaftarkan ke 'user.sqlite' (User ID: ${data.userId})`);
+                    document.getElementById('formUser').reset();
+                }
+            })
+            .catch(err => alert('❌ RALAT:\nGagal berhubung dengan User Service di Port 3001!'));
+        }
+
+        // 2. INTEGRASI REQUEST SERVICE (PORT 3002)
+        function hantarBantuanKeBackend(event) {
+            event.preventDefault();
+            const item = document.getElementById('item_bantuan').value;
+            const kuantiti = parseInt(document.getElementById('kuantiti').value);
+            const lokasi = document.getElementById('lokasi').value;
+
+            fetch('http://localhost:3002/requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_bantuan: item, kuantiti, lokasi })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "Success") {
+                    alert(`✅ REQUEST SERVICE SUCCESS!\nPermohonan disimpan ke 'request.sqlite' (ID Kes: ${data.requestId})`);
+                    document.getElementById('formBantuan').reset();
+                }
+            })
+            .catch(err => alert('❌ RALAT:\nGagal berhubung dengan Request Service di Port 3002!'));
+        }
+
+        // 3. AMBIL DATA DARI REQUEST SERVICE (GET - PORT 3002)
+        function muatNaikSenaraiBantuan() {
+            const jadual = document.getElementById('jadualBantuan');
+            fetch('http://localhost:3002/requests')
+            .then(res => res.json())
+            .then(resData => {
+                jadual.innerHTML = ''; 
+                if (!resData.data || resData.data.length === 0) {
+                    jadual.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">Tiada kes aktif.</td></tr>`;
+                    return;
+                }
+                resData.data.forEach(kes => {
+                    jadual.innerHTML += `
+                        <tr>
+                            <td class="fw-bold ps-3">#00${kes.id}</td>
+                            <td><span class="fw-semibold">${kes.item_bantuan}</span></td>
+                            <td><span class="badge bg-secondary">${kes.kuantiti}</span></td>
+                            <td><i class="fa-solid fa-map-pin text-danger me-1"></i>${kes.lokasi}</td>
+                            <td><span class="badge bg-warning text-dark status-badge"><i class="fa-solid fa-clock me-1"></i>${kes.status}</span></td>
+                            <td class="text-center pe-3">
+                                <button class="btn btn-success btn-sm fw-bold" onclick="terimaTugasanRealistik(${kes.id})"> Terima Kes </button>
+                            </td>
+                        </tr>`;
+                });
+            })
+            .catch(err => jadual.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">❌ Gagal memuatkan data dari Port 3002!</td></tr>`);
+        }
+
+        // 4. INTEGRASI VOLUNTEER SERVICE (PORT 3003)
+        function terimaTugasanRealistik(requestId) {
+            // AMBIL NAMA DINAMIK DARIPADA USER SERVICE TADI, KALAU KOSONG GUNA NAMA HANNA
+            const volunteerName = localStorage.getItem('sukarelawan_aktif') || "Nuruhanna (Default Volunteer)"; 
+
+            fetch('http://localhost:3003/volunteer/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestId, volunteerName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "Success") {
+                    alert(`🚀 VOLUNTEER SERVICE SUCCESS!\nSukarelawan [ ${volunteerName} ] berjaya menerima kes #${requestId}.\nData kini dinamik & disimpan ke 'volunteer.sqlite'!`);
+                }
+            })
+            .catch(err => alert('❌ RALAT:\nGagal berhubung dengan Volunteer Service di Port 3003!'));
+        }
+    </script>
+</body>
+</html>
