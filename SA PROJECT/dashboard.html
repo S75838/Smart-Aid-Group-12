@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard | SMART-AID</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-3">
+        <span class="navbar-brand">SMART-AID Dashboard</span>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+    </nav>
+
+    <div class="container mt-4">
+
+        <h3 id="welcome"></h3>
+
+        <div id="victimPanel" style="display:none;">
+            <h4>Victim Panel</h4>
+            <p>Submit your help request below:</p>
+
+            <form onsubmit="sendRequest(event)">
+                <input class="form-control mb-2" id="item" placeholder="Item needed">
+                <input class="form-control mb-2" id="qty" type="number" placeholder="Quantity">
+                <input class="form-control mb-2" id="location" placeholder="Location">
+
+                <button class="btn btn-primary">Submit Request</button>
+            </form>
+        </div>
+
+        <div id="volunteerPanel" style="display:none;">
+            <h4>Volunteer Panel</h4>
+            <button class="btn btn-info mb-3" onclick="loadRequests()">Load Requests</button>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="table"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem("user"));
+
+        if (!user) {
+            window.location.href = "login.html";
+        }
+
+        document.getElementById("welcome").innerText =
+            "Welcome, " + user.name + " (" + user.role + ")";
+
+        if (user.role === "victim") {
+            document.getElementById("victimPanel").style.display = "block";
+        }
+
+        if (user.role === "volunteer") {
+            document.getElementById("volunteerPanel").style.display = "block";
+        }
+
+        /* ---------------- VICTIM REQUEST ---------------- */
+        function sendRequest(event) {
+            event.preventDefault();
+
+            fetch("http://localhost:3002/requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    item_bantuan: document.getElementById("item").value,
+                    kuantiti: Number(document.getElementById("qty").value),
+                    lokasi: document.getElementById("location").value
+                })
+            })
+                .then(async res => {
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(data.message || "Request failed");
+                    }
+
+                    return data;
+                })
+                .then(data => {
+                    alert("Request submitted successfully!");
+                    console.log(data);
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Failed to submit request: " + err.message);
+                });
+        }
+
+        /* ---------------- VOLUNTEER ---------------- */
+        function loadRequests() {
+            fetch("http://localhost:3002/requests")
+                .then(res => res.json())
+                .then(data => {
+                    const table = document.getElementById("table");
+                    table.innerHTML = "";
+
+                    data.data.forEach(r => {
+                        table.innerHTML += `
+                <tr>
+                    <td>${r.id}</td>
+                    <td>${r.item_bantuan}</td>
+                    <td>${r.kuantiti}</td>
+                    <td>${r.lokasi}</td>
+                    <td>${r.status}</td>
+                    <td>
+                        <button class="btn btn-success btn-sm"
+                        onclick="accept(${r.id})">
+                        Accept
+                        </button>
+                    </td>
+                </tr>
+            `;
+                    });
+                });
+        }
+
+        function accept(id) {
+            const volunteer = JSON.parse(localStorage.getItem("user"));
+
+            fetch("http://localhost:3003/volunteer/accept", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    requestId: id,
+                    volunteerName: volunteer.name
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    alert("Accepted!");
+                    loadRequests();
+                });
+        }
+
+        /* ---------------- LOGOUT ---------------- */
+        function logout() {
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+    </script>
+
+</body>
+
+</html>
