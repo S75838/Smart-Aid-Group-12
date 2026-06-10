@@ -46,7 +46,9 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     role TEXT NOT NULL,
-    phone TEXT NOT NULL
+    phone TEXT NOT NULL,
+    experience TEXT,
+    status TEXT DEFAULT 'Active'
 )
 `);
 
@@ -58,9 +60,8 @@ CREATE TABLE IF NOT EXISTS users (
 ====================================================
 */
 app.post('/users', (req, res) => {
-    const { name, role, phone } = req.body;
+    const { name, role, phone, experience } = req.body;
 
-    // Validation check
     if (!name || !role || !phone) {
         return res.status(400).json({
             status: "Failed",
@@ -68,22 +69,30 @@ app.post('/users', (req, res) => {
         });
     }
 
-    const sql = `INSERT INTO users (name, role, phone) VALUES (?, ?, ?)`;
+    // IMPORTANT LOGIC
+    const status = (role === "volunteer") ? "Pending" : "Active";
 
-    db.run(sql, [name, role, phone], function (err) {
-        if (err) {
-            return res.status(500).json({
-                status: "Error",
-                message: err.message
+    const sql = `INSERT INTO users (name, role, phone, experience, status) VALUES (?, ?, ?, ?, ?)`;
+
+    db.run(
+        sql,
+        [name, role, phone, experience, status],
+        function (err) {
+
+            if (err) {
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+            }
+
+            res.json({
+                status: "Success",
+                message: "Registration successful"
             });
-        }
 
-        res.json({
-            status: "Success",
-            message: "User registered successfully",
-            userId: this.lastID
-        });
-    });
+        }
+    );
 });
 
 /*
@@ -119,18 +128,30 @@ app.get('/users', (req, res) => {
 app.post('/login', (req, res) => {
     const { name, phone } = req.body;
 
+    // Admin login
+    if (name === "admin" && phone === "01126059118") {
+
+        return res.json({
+            status: "Success",
+            user: {
+                id: 0,
+                name: "admin",
+                role: "admin",
+                phone: "01126059118"
+            }
+        });
+
+    }
+
     db.get(
         `SELECT * FROM users WHERE name = ? AND phone = ?`,
         [name, phone],
         (err, row) => {
+
             if (err) {
-                return res.status(500).json({
-                    status: "Error",
-                    message: err.message
-                });
+                return res.status(500).json({ status: "Error" });
             }
 
-            // If user not found
             if (!row) {
                 return res.status(401).json({
                     status: "Failed",
@@ -138,10 +159,57 @@ app.post('/login', (req, res) => {
                 });
             }
 
+            // BLOCK PENDING VOLUNTEERS
+            if (row.role === "volunteer" && row.status === "Pending") {
+                return res.status(403).json({
+                    status: "Failed",
+                    message: "Waiting for admin approval"
+                });
+            }
+
             res.json({
                 status: "Success",
-                message: "Login successful",
                 user: row
+            });
+        }
+    );
+});
+
+/*
+====================================================
+GET ALL PENDING VOLUNTEERS
+====================================================
+*/
+app.get('/volunteers/pending', (req, res) => {
+    db.all(
+        `SELECT * FROM users WHERE role = 'volunteer' AND status = 'Pending'`,
+        [],
+        (err, rows) => {
+            if (err) return res.status(500).json({ status: "Error" });
+
+            res.json({ status: "Success", data: rows });
+        }
+    );
+});
+
+/*
+====================================================
+APPROVE VOLUNTEER
+====================================================
+*/
+app.put('/volunteers/approve/:id', (req, res) => {
+    db.run(
+        `UPDATE users SET status='Active' WHERE id=?`,
+        [req.params.id],
+        function (err) {
+
+            if (err) {
+                return res.status(500).json({ status: "Error" });
+            }
+
+            res.json({
+                status: "Success",
+                message: "Volunteer approved"
             });
         }
     );

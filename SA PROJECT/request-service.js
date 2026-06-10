@@ -1,9 +1,6 @@
 /*
 ====================================================
- SMART-AID REQUEST SERVICE
- Microservice: Disaster Relief Help Request Management
- Technology: Node.js + Express + SQLite
- Purpose: Handle aid creation, status updates, and tracking
+ SMART-AID REQUEST SERVICE (FIXED)
 ====================================================
 */
 
@@ -11,8 +8,10 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const app = express();
 
-// Enable JSON request body parsing
+// JSON parser
 app.use(express.json());
+
+// CORS
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -20,69 +19,61 @@ app.use((req, res, next) => {
     next();
 });
 
-/*
-====================================================
- 1. DATABASE CONNECTION (Request Service SQLite)
-====================================================
- - This connects to local SQLite database file (request.sqlite)
- - Isolated database specific for Help Requests only
-*/
+// DB connection
 const db = new sqlite3.Database('./request.sqlite', (err) => {
     if (err) {
         console.error("Database connection failed:", err.message);
     } else {
-        console.log("Connected to Request Service SQLite database (request.sqlite)");
+        console.log("Connected to request.sqlite");
     }
 });
 
 /*
 ====================================================
- 2. CREATE HELP REQUESTS TABLE
+ TABLE
 ====================================================
- - This table stores help requests from disaster victims
- - Status: Pending, Approved, Completed
 */
 db.run(`
 CREATE TABLE IF NOT EXISTS help_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requester TEXT NOT NULL,
     item_bantuan TEXT NOT NULL,
     kuantiti INTEGER NOT NULL,
     lokasi TEXT NOT NULL,
-    status TEXT DEFAULT 'Pending'
+    status TEXT DEFAULT 'Pending',
+    volunteerName TEXT,
+    progress TEXT DEFAULT 'Waiting'
 )
 `);
 
 /*
 ====================================================
- 3. CREATE HELP REQUEST API
- Endpoint: POST /requests
- Purpose: Allow disaster victims to request for aid
+ CREATE REQUEST
 ====================================================
 */
 app.post('/requests', (req, res) => {
-    const { item_bantuan, kuantiti, lokasi } = req.body;
+    const { requester, item_bantuan, kuantiti, lokasi } = req.body;
 
-    // Validation check (Basic Edge Case Testing)
-    if (!item_bantuan || !kuantiti || !lokasi) {
+    if (!requester || !item_bantuan || !kuantiti || !lokasi) {
         return res.status(400).json({
             status: "Failed",
-            message: "Item bantuan, kuantiti, and lokasi are required"
+            message: "Missing required fields"
         });
     }
 
-    const sql = `INSERT INTO help_requests (item_bantuan, kuantiti, lokasi) VALUES (?, ?, ?)`;
+    const sql = `
+        INSERT INTO help_requests
+        (requester, item_bantuan, kuantiti, lokasi)
+        VALUES (?,?,?,?)
+    `;
 
-    db.run(sql, [item_bantuan, kuantiti, lokasi], function (err) {
+    db.run(sql, [requester, item_bantuan, kuantiti, lokasi], function (err) {
         if (err) {
-            return res.status(500).json({
-                status: "Error",
-                message: err.message
-            });
+            return res.status(500).json({ status: "Error", message: err.message });
         }
 
         res.status(201).json({
             status: "Success",
-            message: "Disaster help request submitted successfully",
             requestId: this.lastID
         });
     });
@@ -90,35 +81,157 @@ app.post('/requests', (req, res) => {
 
 /*
 ====================================================
- 4. GET ALL HELP REQUESTS API
- Endpoint: GET /requests
- Purpose: Retrieve all requests for victims & volunteers to review
+ GET ALL
 ====================================================
 */
 app.get('/requests', (req, res) => {
     db.all(`SELECT * FROM help_requests`, [], (err, rows) => {
         if (err) {
-            return res.status(500).json({
-                status: "Error",
-                message: err.message
-            });
+            return res.status(500).json({ status: "Error", message: err.message });
         }
 
-        res.json({
-            status: "Success",
-            data: rows
-        });
+        res.json({ status: "Success", data: rows });
     });
 });
 
 /*
 ====================================================
- 5. START SERVER
+ GET BY USER
 ====================================================
- - Service runs on port 3002
- - Acts as independent microservice in SMART-AID system
+*/
+app.get('/requests/user/:name', (req, res) => {
+    db.all(
+        `SELECT * FROM help_requests WHERE requester=? ORDER BY id DESC`,
+        [req.params.name],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ status: "Error", message: err.message });
+            }
+
+            res.json({ status: "Success", data: rows });
+        }
+    );
+});
+
+/*
+====================================================
+ CANCEL
+====================================================
+*/
+app.put('/requests/cancel/:id', (req, res) => {
+    db.run(
+        `UPDATE help_requests SET status='Cancelled' WHERE id=? AND status='Pending'`,
+        [req.params.id],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ status: "Error", message: err.message });
+            }
+
+            res.json({ status: "Success" });
+        }
+    );
+});
+
+/*
+====================================================
+ 🔥 FIXED: ACCEPT REQUEST (IMPORTANT PART)
+====================================================
+*/
+app.put('/requests/accept/:id', (req, res) => {
+
+    const { volunteerName } = req.body;
+
+    console.log("🔥 ACCEPT API HIT");
+    console.log("Request ID:", req.params.id);
+    console.log("Volunteer:", volunteerName);
+    console.log("BODY:", req.body);
+    console.log("NAME:", req.body.volunteerName);
+
+    if (!volunteerName) {
+        return res.status(400).json({
+            status: "Failed",
+            message: "volunteerName is required"
+        });
+    }
+
+    db.run(
+        `
+        UPDATE help_requests
+        SET status='Accepted',
+            volunteerName=?
+        WHERE id=?
+        `,
+        [volunteerName, req.params.id],
+        function (err) {
+
+            if (err) {
+                console.log("DB ERROR:", err.message);
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+            }
+
+            console.log("✔ Updated rows:", this.changes);
+
+            res.json({
+                status: "Success",
+                message: "Request accepted + volunteer assigned"
+            });
+        }
+    );
+
+    console.log("Rows affected:", this.changes);
+});
+
+/*
+====================================================
+ UPDATE PROGRESS
+====================================================
+*/
+app.put('/requests/progress/:id', (req, res) => {
+
+    const { progress } = req.body;
+
+    db.run(
+        `UPDATE help_requests SET progress=? WHERE id=?`,
+        [progress, req.params.id],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ status: "Error", message: err.message });
+            }
+
+            res.json({ status: "Success" });
+        }
+    );
+});
+
+/*
+====================================================
+ GET VOLUNTEER TASKS
+====================================================
+*/
+app.get('/requests/volunteer/:name', (req, res) => {
+
+    db.all(
+        `SELECT * FROM help_requests WHERE volunteerName=?`,
+        [req.params.name],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ status: "Error" });
+            }
+
+            res.json({ status: "Success", data: rows });
+        }
+    );
+});
+
+/*
+====================================================
+ START SERVER
+====================================================
 */
 const PORT = 3002;
 app.listen(PORT, () => {
-    console.log(`Request Service is running on port ${PORT}`);
+    console.log(`Request Service running on port ${PORT}`);
 });

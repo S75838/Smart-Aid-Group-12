@@ -18,35 +18,154 @@
         <h3 id="welcome"></h3>
 
         <div id="victimPanel" style="display:none;">
-            <h4>Victim Panel</h4>
-            <p>Submit your help request below:</p>
 
-            <form onsubmit="sendRequest(event)">
-                <input class="form-control mb-2" id="item" placeholder="Item needed">
-                <input class="form-control mb-2" id="qty" type="number" placeholder="Quantity">
-                <input class="form-control mb-2" id="location" placeholder="Location">
+            <div class="row">
 
-                <button class="btn btn-primary">Submit Request</button>
-            </form>
+                <div class="col-md-6">
+
+                    <div class="card shadow border-0 mb-4">
+                        <div class="card-header bg-primary text-white">
+                            Submit Help Request
+                        </div>
+
+                        <div class="card-body">
+
+                            <form onsubmit="sendRequest(event)">
+
+                                <label>Item Needed</label>
+                                <input class="form-control mb-3" id="item" required>
+
+                                <label>Quantity</label>
+                                <input class="form-control mb-3" id="qty" type="number" required>
+
+                                <label>Location</label>
+                                <input class="form-control mb-3" id="location" required>
+
+                                <button class="btn btn-primary w-100">
+                                    Submit Request
+                                </button>
+
+                            </form>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-md-6">
+
+                    <div class="card shadow border-0">
+
+                        <div class="card-header bg-success text-white">
+                            Request Statistics
+                        </div>
+
+                        <div class="card-body">
+
+                            <h5>Total Requests</h5>
+                            <h2 id="totalRequests">0</h2>
+
+                            <hr>
+
+                            <h6>Pending</h6>
+                            <span class="badge bg-warning text-dark" id="pendingCount">0</span>
+
+                            <h6 class="mt-3">Accepted</h6>
+                            <span class="badge bg-success" id="acceptedCount">0</span>
+
+                            <h6 class="mt-3">Cancelled</h6>
+                            <span class="badge bg-danger" id="cancelledCount">0</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="card shadow border-0">
+
+                <div class="card-header bg-dark text-white">
+                    My Help Requests
+                </div>
+
+                <div class="card-body">
+
+                    <table class="table table-hover">
+
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="myRequestsTable"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
         </div>
 
         <div id="volunteerPanel" style="display:none;">
-            <h4>Volunteer Panel</h4>
-            <button class="btn btn-info mb-3" onclick="loadRequests()">Load Requests</button>
 
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="table"></tbody>
-            </table>
+            <!-- Available Requests -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    Available Requests
+                </div>
+
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- My Assigned Tasks -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    My Assigned Tasks
+                </div>
+
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Victim</th>
+                                <th>Item</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Update</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="myTaskTable"></tbody>
+
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -62,11 +181,17 @@
             "Welcome, " + user.name + " (" + user.role + ")";
 
         if (user.role === "victim") {
+
             document.getElementById("victimPanel").style.display = "block";
+
+            loadMyRequests();
         }
 
         if (user.role === "volunteer") {
             document.getElementById("volunteerPanel").style.display = "block";
+
+            loadRequests();
+            loadMyTasks();
         }
 
         /* ---------------- VICTIM REQUEST ---------------- */
@@ -77,6 +202,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    requester: user.name,
                     item_bantuan: document.getElementById("item").value,
                     kuantiti: Number(document.getElementById("qty").value),
                     lokasi: document.getElementById("location").value
@@ -92,8 +218,14 @@
                     return data;
                 })
                 .then(data => {
+
                     alert("Request submitted successfully!");
-                    console.log(data);
+
+                    document.getElementById("item").value = "";
+                    document.getElementById("qty").value = "";
+                    document.getElementById("location").value = "";
+
+                    loadMyRequests();
                 })
                 .catch(err => {
                     console.error(err);
@@ -101,30 +233,151 @@
                 });
         }
 
+        function loadMyRequests() {
+
+            fetch(
+                `http://localhost:3002/requests/user/${user.name}`
+            )
+                .then(res => res.json())
+                .then(data => {
+
+                    const table =
+                        document.getElementById("myRequestsTable");
+
+                    table.innerHTML = "";
+
+                    let pending = 0;
+                    let accepted = 0;
+                    let cancelled = 0;
+
+                    data.data.forEach(r => {
+
+                        let badge = "";
+
+                        if (r.status === "Pending") {
+                            badge =
+                                `<span class="badge bg-warning text-dark">Pending</span>`;
+                            pending++;
+                        }
+
+                        if (r.status === "Accepted") {
+                            badge =
+                                `<span class="badge bg-success">Accepted</span>`;
+                            accepted++;
+                        }
+
+                        if (r.status === "Cancelled") {
+                            badge =
+                                `<span class="badge bg-danger">Cancelled</span>`;
+                            cancelled++;
+                        }
+
+                        table.innerHTML += `
+                            <tr>
+                                <td>${r.id}</td>
+                                <td>${r.item_bantuan}</td>
+                                <td>${r.kuantiti}</td>
+                                <td>${r.lokasi}</td>
+                                <td>${badge}</td>
+                                <td>
+
+                                ${r.status === "Pending"
+                                ?
+                                `<button
+                                        class="btn btn-danger btn-sm"
+                                        onclick="cancelRequest(${r.id})">
+                                        Cancel
+                                    </button>`
+                                :
+                                "-"
+                            }
+
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    document.getElementById("totalRequests").innerText =
+                        data.data.length;
+
+                    document.getElementById("pendingCount").innerText =
+                        pending;
+
+                    document.getElementById("acceptedCount").innerText =
+                        accepted;
+
+                    document.getElementById("cancelledCount").innerText =
+                        cancelled;
+
+                });
+        }
+
+        function cancelRequest(id) {
+
+            if (!confirm("Cancel this request?"))
+                return;
+
+            fetch(
+                `http://localhost:3002/requests/cancel/${id}`,
+                {
+                    method: "PUT"
+                }
+            )
+                .then(res => res.json())
+                .then(data => {
+
+                    alert("Request cancelled");
+
+                    loadMyRequests();
+                });
+
+        }
+
         /* ---------------- VOLUNTEER ---------------- */
         function loadRequests() {
             fetch("http://localhost:3002/requests")
                 .then(res => res.json())
                 .then(data => {
+
                     const table = document.getElementById("table");
                     table.innerHTML = "";
 
                     data.data.forEach(r => {
+
+                        let badge = "";
+
+                        if (r.status === "Pending") {
+                            badge = `<span class="badge bg-warning text-dark">Pending</span>`;
+                        }
+
+                        if (r.status === "Accepted") {
+                            badge = `<span class="badge bg-success">Accepted</span>`;
+                        }
+
+                        if (r.status === "Cancelled") {
+                            badge = `<span class="badge bg-danger">Cancelled</span>`;
+                        }
+
                         table.innerHTML += `
-                <tr>
-                    <td>${r.id}</td>
-                    <td>${r.item_bantuan}</td>
-                    <td>${r.kuantiti}</td>
-                    <td>${r.lokasi}</td>
-                    <td>${r.status}</td>
-                    <td>
-                        <button class="btn btn-success btn-sm"
-                        onclick="accept(${r.id})">
-                        Accept
-                        </button>
-                    </td>
-                </tr>
-            `;
+                        <tr>
+                            <td>${r.id}</td>
+                            <td>${r.item_bantuan}</td>
+                            <td>${r.kuantiti}</td>
+                            <td>${r.lokasi}</td>
+                            <td>${badge}</td>
+                            <td>
+                                ${r.status === "Pending"
+                                ? `<button class="btn btn-success btn-sm"
+                                        onclick="accept(${r.id})">
+                                        Accept
+                                    </button>`
+                                : `<button class="btn btn-secondary btn-sm" disabled>
+                                        Not Available
+                                    </button>`
+                            }
+                            </td>
+                        </tr>
+                        `;
                     });
                 });
         }
@@ -144,7 +397,97 @@
                 .then(data => {
                     alert("Accepted!");
                     loadRequests();
+                    loadMyTasks();
                 });
+        }
+
+        function loadMyTasks() {
+
+            fetch(`http://localhost:3002/requests/volunteer/${user.name}`)
+                .then(res => res.json())
+                .then(data => {
+
+                    const table =
+                        document.getElementById("myTaskTable");
+
+                    table.innerHTML = "";
+
+                    data.data.forEach(r => {
+
+                        table.innerHTML += `
+                <tr>
+
+                    <td>${r.id}</td>
+
+                    <td>${r.requester}</td>
+
+                    <td>${r.item_bantuan}</td>
+
+                    <td>${r.status}</td>
+
+                    <td>${r.progress}</td>
+
+                    <td>
+
+                        <select
+                            class="form-select form-select-sm"
+                            onchange="updateProgress(${r.id}, this.value)">
+
+                            <option>Waiting</option>
+                            <option>On The Way</option>
+                            <option>Delivered</option>
+
+                        </select>
+
+                    </td>
+
+                </tr>
+                `;
+
+                    });
+
+                });
+
+        }
+
+        function updateProgress(id, progress) {
+
+            fetch(
+                `http://localhost:3002/requests/progress/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        progress: progress
+                    })
+                }
+            )
+                .then(res => res.json())
+                .then(data => {
+
+                    if (progress === "Delivered") {
+
+                        fetch(
+                            `http://localhost:3002/requests/status/${id}`,
+                            {
+                                method: "PUT",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    status: "Completed"
+                                })
+                            }
+                        );
+
+                    }
+
+                    loadMyTasks();
+
+                });
+
         }
 
         /* ---------------- LOGOUT ---------------- */

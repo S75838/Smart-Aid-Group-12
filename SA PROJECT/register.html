@@ -15,12 +15,18 @@
             <form onsubmit="registerUser(event)">
                 <input class="form-control mb-3" id="name" placeholder="Full Name" required>
 
-                <select class="form-control mb-3" id="role" required>
+                <select class="form-control mb-3" id="role" required onchange="toggleExperience()">
                     <option value="victim">Victim</option>
                     <option value="volunteer">Volunteer</option>
                 </select>
 
                 <input class="form-control mb-3" id="phone" placeholder="Phone Number" required>
+
+                <div id="experienceDiv" style="display:none;">
+                    <textarea class="form-control mb-3" id="experience" rows="4"
+                        placeholder="Describe your volunteer experience, skills, or previous activities">
+                    </textarea>
+                </div>
 
                 <button class="btn btn-primary w-100">Register</button>
             </form>
@@ -38,11 +44,14 @@
 
             fetch("http://localhost:3001/users", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify({
                     name: document.getElementById("name").value,
                     role: document.getElementById("role").value,
-                    phone: document.getElementById("phone").value
+                    phone: document.getElementById("phone").value,
+                    experience: document.getElementById("experience").value
                 })
             })
                 .then(res => res.json())
@@ -50,9 +59,29 @@
                     if (data.status === "Success") {
                         alert("Registration successful!");
                         window.location.href = "login.html";
+                    } else {
+                        alert(data.message);
                     }
                 })
-                .catch(err => alert("Error registering user"));
+                .catch(err => {
+                    console.error(err);
+                    alert("Error registering user");
+                });
+        }
+
+        function toggleExperience() {
+
+            if (document.getElementById("role").value === "volunteer") {
+
+                document.getElementById("experienceDiv").style.display = "block";
+
+            } else {
+
+                document.getElementById("experienceDiv").style.display = "none";
+                document.getElementById("experience").value = "";
+
+            }
+
         }
     </script>
 
