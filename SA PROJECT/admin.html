@@ -37,6 +37,60 @@
         table th {
             vertical-align: middle;
         }
+
+        table {
+            font-size: 15px;
+        }
+
+        .table td,
+        .table th {
+            padding: 0.45rem;
+            vertical-align: middle;
+        }
+
+        /* ===== TABLE COLUMN CONTROL ===== */
+        table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        /* Column widths */
+        th:nth-child(1),
+        td:nth-child(1) {
+            width: 60px;
+            /* ID */
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            width: 150px;
+            /* Name */
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            width: 140px;
+            /* Phone */
+        }
+
+        th:nth-child(4),
+        td:nth-child(4) {
+            width: 280px;
+            /* Experience (controlled) */
+        }
+
+        th:nth-child(5),
+        td:nth-child(5) {
+            width: 140px;
+            /* Action */
+        }
+
+        /* Prevent experience from stretching row */
+        td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
     </style>
 </head>
 
@@ -46,7 +100,7 @@
     <nav class="navbar navbar-dark bg-dark shadow px-4">
 
         <span class="navbar-brand fs-4">
-            SMART-AID Admin Dashboard
+            SMART-AID ADMIN DASHBOARD
         </span>
 
         <button class="btn btn-danger" onclick="logout()">
@@ -58,13 +112,14 @@
 
     <div class="container mt-4">
 
-        <h3 class="mb-4">
-            Welcome Admin
-        </h3>
-
+        <div class="mb-4">
+            <h3 id="adminWelcome">Welcome Admin 👋</h3>
+            <p class="text-muted">
+                System Overview: Monitor requests, manage volunteers, and track disaster response activities.
+            </p>
+        </div>
 
         <!-- STATISTICS -->
-
         <div class="row">
 
             <div class="col-md-3 mb-3">
@@ -133,31 +188,28 @@
 
         </div>
 
-
         <!-- CHART -->
-
         <div class="card shadow mt-4">
 
             <div class="card-header bg-dark text-white">
                 Request Analytics
             </div>
 
-            <div class="card-body">
+            <div class="card-body text-center">
 
-                <canvas id="myChart"></canvas>
+                <div style="width:360px;height:360px;margin:auto;">
+                    <canvas id="myChart"></canvas>
+                </div>
 
             </div>
 
         </div>
 
-
-
         <!-- PENDING VOLUNTEERS -->
-
         <div class="card shadow mt-4">
 
             <div class="card-header bg-primary text-white">
-                Pending Volunteer Approval
+                Volunteer Approval
             </div>
 
             <div class="card-body">
@@ -167,13 +219,11 @@
                     <thead>
 
                         <tr>
-
                             <th>ID</th>
                             <th>Name</th>
                             <th>Phone</th>
                             <th>Experience</th>
                             <th>Action</th>
-
                         </tr>
 
                     </thead>
@@ -188,14 +238,11 @@
 
         </div>
 
-
-
         <!-- SYSTEM REQUESTS -->
-
         <div class="card shadow mt-4 mb-5">
 
             <div class="card-header bg-success text-white">
-                System Requests
+                Help Requests
             </div>
 
             <div class="card-body">
@@ -211,7 +258,9 @@
                             <th>Item</th>
                             <th>Quantity</th>
                             <th>Location</th>
+                            <th>Volunteer</th>
                             <th>Status</th>
+                            <th>Progress</th>
 
                         </tr>
 
@@ -229,8 +278,6 @@
 
     </div>
 
-
-
     <script>
 
         let chart;
@@ -238,11 +285,7 @@
         loadRequests();
         loadPendingVolunteers();
 
-
-        // ===============================
         // LOAD REQUESTS
-        // ===============================
-
         function loadRequests() {
 
             fetch("http://localhost:3002/requests")
@@ -292,6 +335,32 @@
                             cancelled++;
                         }
 
+                        let progressBadge = "";
+
+                        if (r.progress === "Waiting") {
+
+                            progressBadge =
+                                `<span class="badge bg-secondary">
+                                    Waiting
+                                </span>`;
+                        }
+
+                        if (r.progress === "On The Way") {
+
+                            progressBadge =
+                                `<span class="badge bg-info">
+                                    On The Way
+                                </span>`;
+                        }
+
+                        if (r.progress === "Delivered") {
+
+                            progressBadge =
+                                `<span class="badge bg-success">
+                                    Delivered
+                                </span>`;
+                        }
+
                         table.innerHTML += `
                         <tr>
 
@@ -305,7 +374,17 @@
 
                             <td>${r.lokasi}</td>
 
-                            <td>${badge}</td>
+                            <td>
+                                ${r.volunteerName || "-"}
+                            </td>
+
+                            <td>
+                                ${badge}
+                            </td>
+
+                            <td>
+                                ${progressBadge}
+                            </td>
 
                         </tr>
                         `;
@@ -330,12 +409,7 @@
 
         }
 
-
-
-        // ===============================
         // LOAD PENDING VOLUNTEERS
-        // ===============================
-
         function loadPendingVolunteers() {
 
             fetch("http://localhost:3001/volunteers/pending")
@@ -370,6 +444,14 @@
 
                                 </button>
 
+                                <button
+                                    class="btn btn-danger btn-sm ms-2"
+                                    onclick="rejectVolunteer(${v.id})">
+
+                                    Reject
+
+                                </button>
+
                             </td>
 
                         </tr>
@@ -380,12 +462,7 @@
 
         }
 
-
-
-        // ===============================
         // APPROVE VOLUNTEER
-        // ===============================
-
         function approveVolunteer(id) {
 
             fetch(
@@ -405,12 +482,50 @@
 
         }
 
+        //REJECT VOLUNTEER
+        function rejectVolunteer(id) {
 
+            if (!confirm("Reject this volunteer application?")) {
+                return;
+            }
 
-        // ===============================
+            fetch(`http://localhost:3001/volunteers/reject/${id}`, {
+                method: "PUT"
+            })
+                .then(async (res) => {
+
+                    const text = await res.text(); // IMPORTANT FIX
+
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error("Server did not return valid JSON");
+                    }
+
+                    if (!res.ok) {
+                        throw new Error(data.message || "Reject failed");
+                    }
+
+                    return data;
+                })
+                .then(data => {
+
+                    alert(data.message);
+
+                    loadPendingVolunteers();
+
+                })
+                .catch(err => {
+
+                    console.error(err);
+
+                    alert("Error: " + err.message);
+
+                });
+        }
+
         // PIE CHART
-        // ===============================
-
         function createChart(pending, accepted, cancelled) {
 
             if (chart) {
@@ -449,12 +564,7 @@
 
         }
 
-
-
-        // ===============================
         // LOGOUT
-        // ===============================
-
         function logout() {
 
             localStorage.removeItem("user");

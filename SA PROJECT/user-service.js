@@ -1,45 +1,55 @@
 /*
 ====================================================
  SMART-AID USER SERVICE
- Microservice: User Management
- Technology: Node.js + Express + SQLite
- Purpose: Handle user registration, login, and retrieval
 ====================================================
 */
 
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+
 const app = express();
 
-// Enable JSON request body parsing
 app.use(express.json());
+
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    console.log(req.method, req.url);
     next();
 });
-/*
-====================================================
- 1. DATABASE CONNECTION (User Service SQLite)
-====================================================
- - This connects to local SQLite database file (user.sqlite)
- - Isolated database specific for User Service only
-*/
-const db = new sqlite3.Database('./user.sqlite', (err) => {
-    if (err) {
-        console.error("Database connection failed:", err.message);
-    } else {
-        console.log("Connected to User Service SQLite database (user.sqlite)");
-    }
+
+// CORS
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept"
+    );
+    res.header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    next();
 });
 
 /*
 ====================================================
- 2. CREATE USERS TABLE
+ DATABASE CONNECTION
 ====================================================
- - This table stores all system users
- - Roles: victim, volunteer, admin
+*/
+const db = new sqlite3.Database('./user.sqlite', (err) => {
+
+    if (err) {
+        console.error("Database connection failed:", err.message);
+    }
+    else {
+        console.log("Connected to User Service SQLite database");
+    }
+
+});
+
+/*
+====================================================
+ CREATE TABLE
+====================================================
 */
 db.run(`
 CREATE TABLE IF NOT EXISTS users (
@@ -54,25 +64,31 @@ CREATE TABLE IF NOT EXISTS users (
 
 /*
 ====================================================
- 3. REGISTER USER API
- Endpoint: POST /users
- Purpose: Register new user into system
+ REGISTER USER
 ====================================================
 */
 app.post('/users', (req, res) => {
+
     const { name, role, phone, experience } = req.body;
 
     if (!name || !role || !phone) {
+
         return res.status(400).json({
             status: "Failed",
             message: "All fields are required"
         });
+
     }
 
-    // IMPORTANT LOGIC
-    const status = (role === "volunteer") ? "Pending" : "Active";
+    const status = (role === "volunteer")
+        ? "Pending"
+        : "Active";
 
-    const sql = `INSERT INTO users (name, role, phone, experience, status) VALUES (?, ?, ?, ?, ?)`;
+    const sql = `
+        INSERT INTO users
+        (name, role, phone, experience, status)
+        VALUES (?, ?, ?, ?, ?)
+    `;
 
     db.run(
         sql,
@@ -80,10 +96,12 @@ app.post('/users', (req, res) => {
         function (err) {
 
             if (err) {
+
                 return res.status(500).json({
                     status: "Error",
                     message: err.message
                 });
+
             }
 
             res.json({
@@ -93,39 +111,47 @@ app.post('/users', (req, res) => {
 
         }
     );
+
 });
 
 /*
 ====================================================
- 4. GET ALL USERS API
- Endpoint: GET /users
- Purpose: Retrieve all registered users
+ GET ALL USERS
 ====================================================
 */
 app.get('/users', (req, res) => {
-    db.all(`SELECT * FROM users`, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                status: "Error",
-                message: err.message
-            });
-        }
 
-        res.json({
-            status: "Success",
-            data: rows
-        });
-    });
+    db.all(
+        `SELECT * FROM users`,
+        [],
+        (err, rows) => {
+
+            if (err) {
+
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+
+            }
+
+            res.json({
+                status: "Success",
+                data: rows
+            });
+
+        }
+    );
+
 });
 
 /*
 ====================================================
- 5. LOGIN USER API (SIMPLE AUTH FOR DEMO PURPOSE)
- Endpoint: POST /login
- Purpose: Validate user credentials
+ LOGIN
 ====================================================
 */
 app.post('/login', (req, res) => {
+
     const { name, phone } = req.body;
 
     // Admin login
@@ -144,72 +170,163 @@ app.post('/login', (req, res) => {
     }
 
     db.get(
-        `SELECT * FROM users WHERE name = ? AND phone = ?`,
+        `SELECT * FROM users WHERE name=? AND phone=?`,
         [name, phone],
         (err, row) => {
 
             if (err) {
-                return res.status(500).json({ status: "Error" });
+
+                return res.status(500).json({
+                    status: "Error"
+                });
+
             }
 
             if (!row) {
+
                 return res.status(401).json({
                     status: "Failed",
                     message: "Invalid credentials"
                 });
+
             }
 
-            // BLOCK PENDING VOLUNTEERS
-            if (row.role === "volunteer" && row.status === "Pending") {
+            // Volunteer waiting approval
+            if (
+                row.role === "volunteer" &&
+                row.status === "Pending"
+            ) {
+
                 return res.status(403).json({
                     status: "Failed",
                     message: "Waiting for admin approval"
                 });
+
+            }
+
+            // Volunteer rejected
+            if (
+                row.role === "volunteer" &&
+                row.status === "Rejected"
+            ) {
+
+                return res.status(403).json({
+                    status: "Failed",
+                    message: "Your volunteer application has been rejected by the admin."
+                });
+
             }
 
             res.json({
                 status: "Success",
                 user: row
             });
+
         }
     );
+
 });
 
 /*
 ====================================================
-GET ALL PENDING VOLUNTEERS
+ GET PENDING VOLUNTEERS
 ====================================================
 */
 app.get('/volunteers/pending', (req, res) => {
+
     db.all(
-        `SELECT * FROM users WHERE role = 'volunteer' AND status = 'Pending'`,
+        `
+        SELECT *
+        FROM users
+        WHERE role='volunteer'
+        AND status='Pending'
+        `,
         [],
         (err, rows) => {
-            if (err) return res.status(500).json({ status: "Error" });
 
-            res.json({ status: "Success", data: rows });
+            if (err) {
+
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+
+            }
+
+            res.json({
+                status: "Success",
+                data: rows
+            });
+
         }
     );
+
 });
 
 /*
 ====================================================
-APPROVE VOLUNTEER
+ APPROVE VOLUNTEER
 ====================================================
 */
 app.put('/volunteers/approve/:id', (req, res) => {
+
     db.run(
-        `UPDATE users SET status='Active' WHERE id=?`,
+        `
+        UPDATE users
+        SET status='Active'
+        WHERE id=?
+        `,
         [req.params.id],
         function (err) {
 
             if (err) {
-                return res.status(500).json({ status: "Error" });
+
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+
             }
 
             res.json({
                 status: "Success",
                 message: "Volunteer approved"
+            });
+
+        }
+    );
+
+});
+
+/*
+====================================================
+REJECT VOLUNTEER
+====================================================
+*/
+app.put('/volunteers/reject/:id', (req, res) => {
+
+    db.run(
+        `UPDATE users SET status='Rejected' WHERE id=?`,
+        [req.params.id],
+        function (err) {
+
+            if (err) {
+                return res.status(500).json({
+                    status: "Error",
+                    message: err.message
+                });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({
+                    status: "Failed",
+                    message: "Volunteer not found or already updated"
+                });
+            }
+
+            res.json({
+                status: "Success",
+                message: "Volunteer rejected"
             });
         }
     );
@@ -217,12 +334,13 @@ app.put('/volunteers/approve/:id', (req, res) => {
 
 /*
 ====================================================
- 6. START SERVER
+ START SERVER
 ====================================================
- - Service runs on port 3001
- - Acts as independent microservice in SMART-AID system
 */
 const PORT = 3001;
+
 app.listen(PORT, () => {
+
     console.log(`User Service is running on port ${PORT}`);
+
 });
